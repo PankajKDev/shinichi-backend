@@ -30,6 +30,39 @@ io.on("connection", (socket) => {
     socket.join(roomId);
     console.log(`${socket.id} joined ${roomId}`);
   });
+
+  //VIDEOS
+  socket.on("REQUEST_STATE", async ({ roomId }) => {
+    const raw = await redis.get(getStateKey(roomId));
+    if (raw) {
+      socket.emit("ROOM_STATE", JSON.parse(raw));
+    }
+  });
+  socket.on("PAUSE_VIDEO", async ({ room, time }) => {
+    console.log("pause");
+    await redis.set(
+      getStateKey(room),
+      JSON.stringify({ isPlaying: false, time }),
+    );
+    socket.to(room).emit("RECEIVE_PAUSE");
+  });
+  socket.on("PLAY_VIDEO", async ({ room, time }) => {
+    console.log("play");
+    await redis.set(
+      getStateKey(room),
+      JSON.stringify({ isPlaying: true, time }),
+    );
+    socket.to(room).emit("RECEIVE_PLAY");
+  });
+  socket.on("SEEK_VIDEO", async ({ room, time }) => {
+    console.log("seek", time);
+    const raw = await redis.get(getStateKey(room));
+    const prev = raw ? JSON.parse(raw) : { isPlaying: false };
+    await redis.set(getStateKey(room), JSON.stringify({ ...prev, time }));
+    socket.to(room).emit("RECEIVE_SEEK", { time });
+  });
+
+  //MESSAGES
   socket.on("SEND_MESSAGE", async (data) => {
     const secureMessage = {
       ...data,
