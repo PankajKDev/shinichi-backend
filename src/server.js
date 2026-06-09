@@ -58,7 +58,11 @@ io.on("connection", (socket) => {
   socket.on("SEEK_VIDEO", async ({ roomId, time }) => {
     console.log("seek", time);
     const raw = await redis.get(getStateKey(roomId));
-    const prev = raw ? JSON.parse(raw) : { isPlaying: false };
+    let prev = { isPlaying: false };
+    if (raw) {
+      prev = typeof raw === "string" ? JSON.parse(raw) : raw;
+    }
+
     await redis.set(getStateKey(roomId), JSON.stringify({ ...prev, time }));
     socket.to(roomId).emit("RECEIVE_SEEK", { time });
   });
@@ -78,7 +82,7 @@ io.on("connection", (socket) => {
     } catch (e) {
       console.error("Failed to save messages");
     }
-    io.to(data.room).emit("RECEIVE_MESSAGE", secureMessage);
+    io.to(data.roomId).emit("RECEIVE_MESSAGE", secureMessage);
   });
 });
 
