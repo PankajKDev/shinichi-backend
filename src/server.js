@@ -35,31 +35,32 @@ io.on("connection", (socket) => {
   socket.on("REQUEST_STATE", async ({ roomId }) => {
     const raw = await redis.get(getStateKey(roomId));
     if (raw) {
-      socket.emit("ROOM_STATE", JSON.parse(raw));
+      const state = typeof raw === "string" ? JSON.parse(raw) : raw;
+      socket.to(roomId).emit("ROOM_STATE", state);
     }
   });
-  socket.on("PAUSE_VIDEO", async ({ room, time }) => {
+  socket.on("PAUSE_VIDEO", async ({ roomId, time }) => {
     console.log("pause");
     await redis.set(
-      getStateKey(room),
+      getStateKey(roomId),
       JSON.stringify({ isPlaying: false, time }),
     );
-    socket.to(room).emit("RECEIVE_PAUSE");
+    socket.to(roomId).emit("RECEIVE_PAUSE");
   });
-  socket.on("PLAY_VIDEO", async ({ room, time }) => {
+  socket.on("PLAY_VIDEO", async ({ roomId, time }) => {
     console.log("play");
     await redis.set(
-      getStateKey(room),
+      getStateKey(roomId),
       JSON.stringify({ isPlaying: true, time }),
     );
-    socket.to(room).emit("RECEIVE_PLAY");
+    socket.to(roomId).emit("RECEIVE_PLAY");
   });
-  socket.on("SEEK_VIDEO", async ({ room, time }) => {
+  socket.on("SEEK_VIDEO", async ({ roomId, time }) => {
     console.log("seek", time);
-    const raw = await redis.get(getStateKey(room));
+    const raw = await redis.get(getStateKey(roomId));
     const prev = raw ? JSON.parse(raw) : { isPlaying: false };
-    await redis.set(getStateKey(room), JSON.stringify({ ...prev, time }));
-    socket.to(room).emit("RECEIVE_SEEK", { time });
+    await redis.set(getStateKey(roomId), JSON.stringify({ ...prev, time }));
+    socket.to(roomId).emit("RECEIVE_SEEK", { time });
   });
 
   //MESSAGES
@@ -69,7 +70,7 @@ io.on("connection", (socket) => {
       senderId: socket.userId,
     };
 
-    const redisKey = `chat_history:${data.room}`;
+    const redisKey = `chat_history:${data.roomId}`;
     try {
       await redis.rpush(redisKey, JSON.stringify(secureMessage));
       await redis.ltrim(redisKey, -50, -1);
