@@ -36,7 +36,7 @@ io.on("connection", (socket) => {
     const raw = await redis.get(getStateKey(roomId));
     if (raw) {
       const state = typeof raw === "string" ? JSON.parse(raw) : raw;
-      socket.to(roomId).emit("ROOM_STATE", state);
+      socket.emit("ROOM_STATE", state);
     }
   });
   socket.on("PAUSE_VIDEO", async ({ roomId, time }) => {
@@ -62,7 +62,6 @@ io.on("connection", (socket) => {
     if (raw) {
       prev = typeof raw === "string" ? JSON.parse(raw) : raw;
     }
-
     await redis.set(getStateKey(roomId), JSON.stringify({ ...prev, time }));
     socket.to(roomId).emit("RECEIVE_SEEK", { time });
   });
