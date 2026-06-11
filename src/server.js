@@ -31,9 +31,11 @@ io.on("connection", (socket) => {
     console.log(`${socket.id} joined ${roomId}`);
   });
 
-  //VIDEOS
+  // Broadcast play, pause, and seek events to all OTHER clients
+
   socket.on("REQUEST_STATE", async ({ roomId }) => {
     const raw = await redis.get(getStateKey(roomId));
+    console.log(raw);
     if (raw) {
       const state = typeof raw === "string" ? JSON.parse(raw) : raw;
       socket.emit("ROOM_STATE", state);
@@ -45,7 +47,7 @@ io.on("connection", (socket) => {
       getStateKey(roomId),
       JSON.stringify({ isPlaying: false, time }),
     );
-    socket.to(roomId).emit("RECEIVE_PAUSE");
+    socket.to(roomId).emit("RECEIVE_PAUSE", { time });
   });
   socket.on("PLAY_VIDEO", async ({ roomId, time }) => {
     console.log("play");
@@ -53,7 +55,7 @@ io.on("connection", (socket) => {
       getStateKey(roomId),
       JSON.stringify({ isPlaying: true, time }),
     );
-    socket.to(roomId).emit("RECEIVE_PLAY");
+    socket.to(roomId).emit("RECEIVE_PLAY", { time });
   });
   socket.on("SEEK_VIDEO", async ({ roomId, time }) => {
     console.log("seek", time);
